@@ -29,6 +29,7 @@ export default function AdminLayout() {
     { path: "/admin/records", name: "السجلات", icon: <FileText className="w-4 h-4" /> },
     { path: "/admin/payments", name: "الدفعات", icon: <CreditCard className="w-4 h-4" /> },
     { path: "/admin/finance", name: "الإحصائيات المالية", icon: <CreditCard className="w-4 h-4" /> },
+    { path: "/admin/insurance-companies", name: "شركات التأمين", icon: <Building2 className="w-4 h-4" /> },
   ];
 
   const current = pages.find((p) => p.path === location.pathname);

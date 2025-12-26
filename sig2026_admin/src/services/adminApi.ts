@@ -108,4 +108,17 @@ rebuildFinanceByCenter: (payload: { from: string; to: string }) =>
 getSavedFinanceByCenter: (from?: string, to?: string) =>
   apiFetch(`/admin/finance/centers/saved?from=${from || ""}&to=${to || ""}`),
 
+// Insurance Companies
+getInsuranceCompanies: () => apiFetch("/admin/insurance-companies"),
+createInsuranceCompany: (payload: any) =>
+  apiFetch("/admin/insurance-companies", { method: "POST", body: JSON.stringify(payload) }),
+updateInsuranceCompany: (id: string, payload: any) =>
+  apiFetch(`/admin/insurance-companies/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+deleteInsuranceCompany: (id: string) =>
+  apiFetch(`/admin/insurance-companies/${id}`, { method: "DELETE" }),
+
+getInsuranceCompaniesStats: (from?: string, to?: string) =>
+  apiFetch(`/admin/insurance-companies/stats?from=${from || ""}&to=${to || ""}`, { headers: { "x-raw": "1" } as any }),
+
+
 };
