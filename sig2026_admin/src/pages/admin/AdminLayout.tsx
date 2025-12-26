@@ -2,6 +2,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 import {
+  Building2,
   CreditCard,
   FileText,
   Home,
@@ -23,9 +24,11 @@ export default function AdminLayout() {
 
   const pages: PageInfo[] = [
     { path: "/admin", name: "لوحة التحكم", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { path: "/admin/centers", name: "المراكز", icon: <Building2 className="w-4 h-4" /> },
     { path: "/admin/employees", name: "الموظفون", icon: <Users className="w-4 h-4" /> },
     { path: "/admin/records", name: "السجلات", icon: <FileText className="w-4 h-4" /> },
     { path: "/admin/payments", name: "الدفعات", icon: <CreditCard className="w-4 h-4" /> },
+    { path: "/admin/finance", name: "الإحصائيات المالية", icon: <CreditCard className="w-4 h-4" /> },
   ];
 
   const current = pages.find((p) => p.path === location.pathname);
@@ -133,9 +136,7 @@ export default function AdminLayout() {
 
             <div className="pt-3">
               <div className="h-px bg-slate-200 mb-3" />
-              <div className="text-xs text-slate-500 leading-5">
-                Theme: <span className="font-semibold">Indigo → Purple → Fuchsia</span>
-              </div>
+              
             </div>
           </div>
         </aside>

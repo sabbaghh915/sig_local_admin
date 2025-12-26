@@ -1,224 +1,365 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select"; // ✅ مهم: select وليس Select
+import { Badge } from "../../components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { adminApi } from "../../services/adminApi";
 
-type User = {
+type Center = {
   _id: string;
-  username: string;
-  fullName: string;
-  email: string;
-  role: "admin" | "employee";
-  employeeId?: string;
+  name: string;
+  ip?: string;
+  code?: string;
+  address?: string;
+  employeesCount?: number;
 };
 
-const extractArray = (res: any): any[] => {
-  if (Array.isArray(res)) return res;
-  if (Array.isArray(res?.data)) return res.data;
-  if (Array.isArray(res?.data?.data)) return res.data.data; // أحيانًا axios داخل axios
-  if (Array.isArray(res?.items)) return res.items;
-  if (Array.isArray(res?.users)) return res.users;
-  return [];
+type AdminUser = {
+  _id: string;
+  username?: string;
+  fullName?: string;
+  email?: string;
+  role?: "admin" | "employee" | string;
+  employeeId?: string;
+  center?: string | Center | null;
 };
+
+const getCenterId = (c: AdminUser["center"]) => {
+  if (!c) return "";
+  if (typeof c === "string") return c;
+  return c._id;
+};
+
+const getCenterName = (c: AdminUser["center"]) => {
+  if (!c) return "—";
+  if (typeof c === "string") return "—";
+  return c.name || "—";
+};
+
+
 
 export default function AdminEmployees() {
-  const [items, setItems] = useState<User[]>([]);
-  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [form, setForm] = useState<{
-    username: string;
-    password: string;
-    fullName: string;
-    email: string;
-    role: User["role"];
-    employeeId: string;
-  }>({
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [selectedCenter, setSelectedCenter] = useState<string>("all");
+
+  // ✅ أهم سطر: النافذة تبدأ مغلقة
+  const [openAdd, setOpenAdd] = useState(false);
+
+  const [form, setForm] = useState({
     username: "",
     password: "",
     fullName: "",
     email: "",
-    role: "employee",
     employeeId: "",
+    role: "employee",
+    center: "", // centerId
   });
 
-  const load = async () => {
-    const res = await adminApi.getUsers();
-    setItems(extractArray(res) as User[]);
-  };
-
-  useEffect(() => {
-    load().catch(console.error);
-  }, []);
-
-  const create = async () => {
-    await adminApi.createUser(form);
-    setOpen(false);
+  const resetForm = () => {
     setForm({
       username: "",
       password: "",
       fullName: "",
       email: "",
-      role: "employee",
       employeeId: "",
+      role: "employee",
+      center: "",
     });
-    await load();
   };
 
-  const remove = async (id: string) => {
-    await adminApi.deleteUser(id);
-    await load();
+  const loadAll = async () => {
+    try {
+      setLoading(true);
+
+      const [usersRes, centersRes] = await Promise.all([
+        adminApi.getUsers(),
+        adminApi.getCenters().catch(() => []), // إذا لم تعمل المراكز بعد
+      ]);
+
+      setUsers(Array.isArray(usersRes) ? usersRes : []);
+      setCenters(Array.isArray(centersRes) ? centersRes : []);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
+  const filteredUsers = useMemo(() => {
+    if (selectedCenter === "all") return users;
+
+    return users.filter((u) => {
+      const cid = getCenterId(u.center);
+      return cid === selectedCenter;
+    });
+  }, [users, selectedCenter]);
+
+  const removeUser = async (id: string) => {
+    if (!id) return;
+    if (!confirm("هل أنت متأكد من حذف الموظف؟")) return;
+    await adminApi.deleteUser(id);
+    await loadAll();
+  };
+
+  const saveUser = async () => {
+    if (!form.username.trim()) return alert("اسم المستخدم مطلوب");
+    if (!form.password.trim()) return alert("كلمة المرور مطلوبة");
+    if (!form.fullName.trim()) return alert("الاسم الكامل مطلوب");
+    if (!form.email.trim()) return alert("الإيميل مطلوب");
+    if (!form.center) return alert("اختر مركز الموظف");
+
+    await adminApi.createUser({
+      username: form.username.trim(),
+      password: form.password.trim(),
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      employeeId: form.employeeId.trim() || undefined,
+      role: form.role,
+      centerId: form.role === "admin" ? null : form.center,// ✅ مهم: centerId
+    });
+
+    // ✅ اغلاق + تصفير + تحديث
+    setOpenAdd(false);
+    resetForm();
+    await loadAll();
+  };
+
+  
+const centerLabel = (u: any, centers: any[]) => {
+  const c = u.center;
+  if (!c) return "—";
+
+  // إذا رجع populate (object)
+  if (typeof c === "object") return c.name || c.code || c._id || "—";
+
+  // إذا رجع string ObjectId
+  const found = centers.find((x) => x._id === c);
+  return found ? (found.name || found.code) : c; // fallback: يعرض الـ ID
+};
+
+const centerIp = (u: any, centers: any[]) => {
+  const c = u.center;
+  if (!c) return "—";
+
+  // populated object
+  if (typeof c === "object") return c.ip || "—";
+
+  // string id
+  const found = centers.find((x) => x._id === c);
+  return found?.ip || "—";
+};
+
+
+
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>الموظفون</CardTitle>
+    <div dir="rtl" className="space-y-4">
+      <Card className="shadow-sm">
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <CardTitle>الموظفون</CardTitle>
 
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setOpen(true)}>إضافة موظف</Button>
-          </DialogTrigger>
-
-          {/* ✅ مهم: نرندر المحتوى فقط عند الفتح */}
-          {open && (
-            <DialogContent dir="rtl">
-              <DialogHeader>
-                <DialogTitle>إضافة موظف جديد</DialogTitle>
-              </DialogHeader>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>اسم المستخدم</Label>
-                  <Input
-                    value={form.username}
-                    onChange={(e) => setForm({ ...form, username: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>كلمة المرور</Label>
-                  <Input
-                    type="password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>الاسم الكامل</Label>
-                  <Input
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>البريد</Label>
-                  <Input
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>الدور</Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={(v) =>
-                      setForm({ ...form, role: v as User["role"] })
-                    }
-                  >
-                    <SelectTrigger className="text-right">
-                      <SelectValue placeholder="اختر" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="employee">موظف</SelectItem>
-                      <SelectItem value="admin">أدمن</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>رقم الموظف</Label>
-                  <Input
-                    value={form.employeeId}
-                    onChange={(e) =>
-                      setForm({ ...form, employeeId: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  إلغاء
+          <div className="flex items-center gap-2">
+            {/* ✅ زر يفتح النافذة فقط */}
+            <Dialog
+              open={openAdd}
+              onOpenChange={(v) => {
+                setOpenAdd(v);
+                if (!v) resetForm();
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  + إضافة موظف
                 </Button>
-                <Button onClick={create}>حفظ</Button>
-              </div>
-            </DialogContent>
-          )}
-        </Dialog>
-      </CardHeader>
+              </DialogTrigger>
 
-      <CardContent>
-        <div className="overflow-auto border rounded-lg bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-700">
-              <tr>
-                <th className="p-3 text-right">username</th>
-                <th className="p-3 text-right">الاسم</th>
-                <th className="p-3 text-right">البريد</th>
-                <th className="p-3 text-right">الدور</th>
-                <th className="p-3 text-right">إجراء</th>
-              </tr>
-            </thead>
+              <DialogContent className="sm:max-w-[820px]" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>إضافة موظف</DialogTitle>
+                </DialogHeader>
 
-            <tbody>
-              {items.map((u) => (
-                <tr key={u._id} className="border-t">
-                  <td className="p-3">{u.username}</td>
-                  <td className="p-3">{u.fullName}</td>
-                  <td className="p-3">{u.email}</td>
-                  <td className="p-3">{u.role}</td>
-                  <td className="p-3">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => remove(u._id)}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div className="space-y-2">
+                    <Label>اسم المستخدم *</Label>
+                    <Input
+                      value={form.username}
+                      onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+                      placeholder="مثال: employee01"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>كلمة المرور *</Label>
+                    <Input
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>الاسم الكامل *</Label>
+                    <Input
+                      value={form.fullName}
+                      onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))}
+                      placeholder="الاسم الكامل"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>الإيميل *</Label>
+                    <Input
+                      value={form.email}
+                      onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                      placeholder="example@mail.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>الرقم الوظيفي</Label>
+                    <Input
+                      value={form.employeeId}
+                      onChange={(e) => setForm((s) => ({ ...s, employeeId: e.target.value }))}
+                      placeholder="اختياري"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>الدور</Label>
+                    <select
+                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      value={form.role}
+                      onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
                     >
-                      حذف
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                      <option value="employee">موظف</option>
+                      <option value="admin">أدمن</option>
+                    </select>
+                  </div>
 
-              {!items.length && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>المركز *</Label>
+                    <select
+                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      value={form.center}
+                      onChange={(e) => setForm((s) => ({ ...s, center: e.target.value }))}
+                    >
+                      <option value="">اختر مركز الموظف</option>
+                      {centers.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name} {c.ip ? `— ${c.ip}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 justify-start md:col-span-2 mt-2">
+                    <Button onClick={saveUser}>حفظ</Button>
+                    <Button variant="outline" onClick={() => { setOpenAdd(false); resetForm(); }}>
+                      إلغاء
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* فلتر المراكز */}
+            <select
+              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              value={selectedCenter}
+              onChange={(e) => setSelectedCenter(e.target.value)}
+            >
+              <option value="all">كل المراكز</option>
+              {centers.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            <Button variant="outline" onClick={loadAll}>
+              تحديث
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="rounded-2xl border bg-white overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-gray-500">
-                    لا يوجد موظفين
-                  </td>
+                  <th className="p-3 text-right">المستخدم</th>
+                  <th className="p-3 text-right">الاسم</th>
+                  <th className="p-3 text-right">الإيميل</th>
+                  <th className="p-3 text-right">المركز</th>
+                  <th className="p-3 text-right">IP</th>
+                  <th className="p-3 text-right">الدور</th>
+                  <th className="p-3 text-right">إجراء</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-3" colSpan={7}>
+                        <div className="h-8 bg-slate-100 rounded animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredUsers.length === 0 ? (
+                  <tr className="border-t">
+                    <td className="p-8 text-center text-slate-500" colSpan={7}>
+                      لا يوجد موظفون
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const centerObj = typeof u.center === "object" ? u.center : null;
+                    //const centerIp = centerObj?.ip || "—";
+
+                    return (
+                      <tr key={u._id} className="border-t">
+                        <td className="p-3">{u.username || "—"}</td>
+                        <td className="p-3">{u.fullName || "—"}</td>
+                        <td className="p-3">{u.email || "—"}</td>
+                        <td className="p-3">{centerLabel(u, centers)}</td>
+
+                        <td className="p-3">{centerIp(u, centers)}</td>
+
+                        <td className="p-3">
+                          {u.role === "admin" ? (
+                            <Badge className="bg-rose-600 hover:bg-rose-600">أدمن</Badge>
+                          ) : (
+                            <Badge variant="secondary">موظف</Badge>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeUser(u._id)}
+                            className="gap-2"
+                          >
+                            حذف
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
