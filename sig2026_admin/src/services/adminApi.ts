@@ -120,5 +120,11 @@ deleteInsuranceCompany: (id: string) =>
 getInsuranceCompaniesStats: (from?: string, to?: string) =>
   apiFetch(`/admin/insurance-companies/stats?from=${from || ""}&to=${to || ""}`, { headers: { "x-raw": "1" } as any }),
 
+getInsuranceCompanyPayments: (id: string, from?: string, to?: string, page = 1, limit = 50) =>
+  apiFetch(
+    `/admin/insurance-companies/${id}/payments?from=${from || ""}&to=${to || ""}&page=${page}&limit=${limit}`,
+    { headers: { "x-raw": "1" } as any }
+  ),
+
 
 };
