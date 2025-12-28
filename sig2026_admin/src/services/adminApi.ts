@@ -125,6 +125,23 @@ getInsuranceCompanyPayments: (id: string, from?: string, to?: string, page = 1, 
     `/admin/insurance-companies/${id}/payments?from=${from || ""}&to=${to || ""}&page=${page}&limit=${limit}`,
     { headers: { "x-raw": "1" } as any }
   ),
+// Finance breakdown by center
+getFinanceBreakdownByCenter: (from: string, to: string, centerId?: string) =>
+  apiFetch(
+    `/admin/finance/breakdown?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${
+      centerId ? `&centerId=${encodeURIComponent(centerId)}` : ""
+    }`,
+    { headers: { "x-raw": "1" } }
+  ),
+
+// Finance distribution by insurance company
+getFinanceDistributionByCompany: (from: string, to: string, centerId?: string) =>
+  apiFetch(
+    `/admin/finance/distribution?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${
+      centerId ? `&centerId=${encodeURIComponent(centerId)}` : ""
+    }`,
+    { headers: { "x-raw": "1" } }
+  ),
 
 
 };

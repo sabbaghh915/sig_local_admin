@@ -8,26 +8,26 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Separator } from "../../components/ui/separator";
 import { Badge } from "../../components/ui/badge";
 import { adminApi } from "../../services/adminApi";
-import { Building2, RefreshCcw, Download, Printer, AlertCircle, BarChart3 } from "lucide-react";
+import { Building2, Download, Printer, AlertCircle, PieChart } from "lucide-react";
 
 type Center = {
   _id: string;
   name: string;
-  code?: string;
   ip?: string;
   province?: string;
   isActive?: boolean;
 };
 
-type FinanceBreakdownRow = {
-  centerId: string;
-  centerName?: string;
-  centerCode?: string;
-  centerIp?: string;
-  province?: string;
+type DistributionRow = {
+  insuranceCompanyId: string;
+  insuranceCompanyName: string;
 
-  totalAmount: number;
   paymentsCount: number;
+  totalAmount: number;
+
+  stateShareTotal: number;
+  federationTotal: number;
+  companyShareTotal: number;
 
   martyrTotal: number;
   warTotal: number;
@@ -35,28 +35,16 @@ type FinanceBreakdownRow = {
   agesTotal: number;
   localTotal: number;
   proposedTotal: number;
-
-  stateShareTotal: number;
-  federationTotal: number;
-  companyShareTotal: number;
 };
 
-type FinanceBreakdownResponse = {
+type DistributionResponse = {
   success: boolean;
   from: string;
   to: string;
-  data: FinanceBreakdownRow[];
+  data: DistributionRow[];
   grand: {
     grandTotal?: number;
     grandCount?: number;
-
-    martyrTotal?: number;
-    warTotal?: number;
-    stampTotal?: number;
-    agesTotal?: number;
-    localTotal?: number;
-    proposedTotal?: number;
-
     stateShareTotal?: number;
     federationTotal?: number;
     companyShareTotal?: number;
@@ -67,15 +55,15 @@ const toYMD = (d: Date) => d.toISOString().slice(0, 10);
 const formatCurrency = (n: number) => (Number(n || 0)).toLocaleString("ar") + " ل.س";
 const formatNumber = (n: number) => Number(n || 0).toLocaleString("ar");
 
-export default function AdminFinance() {
+export default function AdminFinanceDistribution() {
   const [from, setFrom] = useState(() => toYMD(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
   const [to, setTo] = useState(() => toYMD(new Date()));
 
   const [centers, setCenters] = useState<Center[]>([]);
   const [centerId, setCenterId] = useState<string>("all");
 
-  const [rows, setRows] = useState<FinanceBreakdownRow[]>([]);
-  const [grand, setGrand] = useState<FinanceBreakdownResponse["grand"]>({});
+  const [rows, setRows] = useState<DistributionRow[]>([]);
+  const [grand, setGrand] = useState<DistributionResponse["grand"]>({});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -97,35 +85,20 @@ export default function AdminFinance() {
     setCenters(active);
   };
 
-  const loadFinance = async () => {
+  const loadData = async () => {
     setError("");
     setLoading(true);
     try {
-      const res = (await adminApi.getFinanceBreakdownByCenter(
+      const res = (await adminApi.getFinanceDistributionByCompany(
         from,
         to,
         centerId === "all" ? undefined : centerId
-      )) as FinanceBreakdownResponse;
+      )) as DistributionResponse;
 
       setRows(res?.data || []);
       setGrand(res?.grand || {});
     } catch (e: any) {
-      setError(e?.message || "فشل تحميل البيانات المالية التفصيلية");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // (اختياري) إذا عندك rebuild سابق للـ totals القديمة فقط — اتركه كما هو
-  const rebuildAndSave = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      await adminApi.rebuildFinanceByCenter({ from, to });
-      await loadFinance();
-      alert("تمت إعادة الحساب والحفظ ✅");
-    } catch (e: any) {
-      setError(e?.message || "فشل إعادة الحساب");
+      setError(e?.message || "فشل تحميل توزيع المبالغ");
     } finally {
       setLoading(false);
     }
@@ -133,45 +106,38 @@ export default function AdminFinance() {
 
   const exportCSV = () => {
     const header = [
-      "المركز",
-      "المحافظة",
-      "IP",
+      "شركة التأمين",
       "عدد الدفعات",
       "الإجمالي",
+      "حصة الدولة",
+      "حصة الاتحاد",
+      "حصة الشركة",
       "طابع الشهيد",
       "المجهود الحربي",
       "رسم الطابع",
       "رسم الأعمار",
       "الإدارة المحلية",
       "البدل المقترح",
-      "حصة الدولة",
-      "حصة الاتحاد",
-      "حصة الشركات",
     ];
     const lines = [header.join(",")];
 
     const esc = (s: any) => `"${String(s ?? "").replace(/"/g, '""')}"`;
 
     for (const r of rows) {
-      const centerLabel = r.centerName || r.centerCode || r.centerId;
       lines.push(
         [
-          esc(centerLabel),
-          esc(r.province || ""),
-          esc(r.centerIp || ""),
+          esc(r.insuranceCompanyName),
           String(r.paymentsCount || 0),
           String(r.totalAmount || 0),
-
+          String(r.stateShareTotal || 0),
+          String(r.federationTotal || 0),
+          String(r.companyShareTotal || 0),
           String(r.martyrTotal || 0),
           String(r.warTotal || 0),
           String(r.stampTotal || 0),
           String(r.agesTotal || 0),
           String(r.localTotal || 0),
           String(r.proposedTotal || 0),
-
-          String(r.stateShareTotal || 0),
-          String(r.federationTotal || 0),
-          String(r.companyShareTotal || 0),
         ].join(",")
       );
     }
@@ -182,7 +148,7 @@ export default function AdminFinance() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `finance_breakdown_by_center_${from}_to_${to}.csv`;
+    a.download = `finance_distribution_${from}_to_${to}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -190,35 +156,20 @@ export default function AdminFinance() {
   };
 
   const printPDF = () => {
-    const title = "المالية - تفصيل الرسوم حسب المراكز";
+    const title = "توزيع المبالغ على شركات التأمين + حصة الدولة + حصة الاتحاد";
     const centerFilter = selectedCenter ? `المركز: ${selectedCenter.name}` : "كل المراكز";
 
     const rowHtml = rows
-      .map((r) => {
-        const c = r.centerName || r.centerCode || r.centerId;
-        const p = r.province || "—";
-        const ip = r.centerIp || "—";
-        return `
-          <tr>
-            <td>${c}</td>
-            <td>${p}</td>
-            <td>${ip}</td>
-            <td>${formatNumber(r.paymentsCount || 0)}</td>
-            <td><b>${formatCurrency(r.totalAmount || 0)}</b></td>
-
-            <td>${formatCurrency(r.martyrTotal || 0)}</td>
-            <td>${formatCurrency(r.warTotal || 0)}</td>
-            <td>${formatCurrency(r.stampTotal || 0)}</td>
-            <td>${formatCurrency(r.agesTotal || 0)}</td>
-            <td>${formatCurrency(r.localTotal || 0)}</td>
-            <td>${formatCurrency(r.proposedTotal || 0)}</td>
-
-            <td><b>${formatCurrency(r.stateShareTotal || 0)}</b></td>
-            <td><b>${formatCurrency(r.federationTotal || 0)}</b></td>
-            <td><b>${formatCurrency(r.companyShareTotal || 0)}</b></td>
-          </tr>
-        `;
-      })
+      .map((r) => `
+        <tr>
+          <td>${r.insuranceCompanyName}</td>
+          <td>${formatNumber(r.paymentsCount || 0)}</td>
+          <td><b>${formatCurrency(r.totalAmount || 0)}</b></td>
+          <td>${formatCurrency(r.stateShareTotal || 0)}</td>
+          <td>${formatCurrency(r.federationTotal || 0)}</td>
+          <td><b>${formatCurrency(r.companyShareTotal || 0)}</b></td>
+        </tr>
+      `)
       .join("");
 
     const html = `
@@ -230,10 +181,10 @@ export default function AdminFinance() {
           body { font-family: Arial, sans-serif; padding: 16px; }
           h1 { margin: 0 0 8px; font-size: 18px; }
           .meta { margin: 0 0 12px; color: #444; font-size: 12px; }
-          .cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 16px; }
+          .cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 16px; }
           .card { border: 1px solid #ddd; border-radius: 10px; padding: 10px 12px; }
-          table { width: 100%; border-collapse: collapse; font-size: 11px; }
-          th, td { border: 1px solid #ddd; padding: 6px; text-align: right; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
           th { background: #f5f5f5; }
           @media print { .noprint { display: none; } }
         </style>
@@ -246,7 +197,7 @@ export default function AdminFinance() {
         <div class="meta">${rangeLabel} — ${centerFilter}</div>
 
         <div class="cards">
-          <div class="card"><div>إجمالي المبالغ</div><div><b>${formatCurrency(grand.grandTotal || 0)}</b></div></div>
+          <div class="card"><div>الإجمالي</div><div><b>${formatCurrency(grand.grandTotal || 0)}</b></div></div>
           <div class="card"><div>حصة الدولة</div><div><b>${formatCurrency(grand.stateShareTotal || 0)}</b></div></div>
           <div class="card"><div>حصة الاتحاد</div><div><b>${formatCurrency(grand.federationTotal || 0)}</b></div></div>
           <div class="card"><div>حصة الشركات</div><div><b>${formatCurrency(grand.companyShareTotal || 0)}</b></div></div>
@@ -255,33 +206,23 @@ export default function AdminFinance() {
         <table>
           <thead>
             <tr>
-              <th>المركز</th>
-              <th>المحافظة</th>
-              <th>IP</th>
+              <th>شركة التأمين</th>
               <th>عدد الدفعات</th>
               <th>الإجمالي</th>
-
-              <th>طابع الشهيد</th>
-              <th>المجهود الحربي</th>
-              <th>رسم الطابع</th>
-              <th>رسم الأعمار</th>
-              <th>الإدارة المحلية</th>
-              <th>البدل المقترح</th>
-
               <th>حصة الدولة</th>
               <th>حصة الاتحاد</th>
-              <th>حصة الشركات</th>
+              <th>حصة الشركة</th>
             </tr>
           </thead>
           <tbody>
-            ${rowHtml || `<tr><td colspan="14">لا يوجد بيانات</td></tr>`}
+            ${rowHtml || `<tr><td colspan="6">لا يوجد بيانات</td></tr>`}
           </tbody>
         </table>
       </body>
       </html>
     `;
 
-    const w = window.open("", "_blank", "width=1200,height=700");
+    const w = window.open("", "_blank", "width=1100,height=700");
     if (!w) return alert("المتصفح منع فتح نافذة جديدة للطباعة");
     w.document.open();
     w.document.write(html);
@@ -290,7 +231,7 @@ export default function AdminFinance() {
 
   useEffect(() => {
     loadCenters().catch(() => {});
-    loadFinance().catch(() => {});
+    loadData().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -299,10 +240,10 @@ export default function AdminFinance() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-            <BarChart3 className="h-5 w-5" />
+            <PieChart className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xl font-extrabold">المالية — تفصيل الرسوم حسب المراكز</div>
+            <div className="text-xl font-extrabold">توزيع المبالغ على شركات التأمين</div>
             <div className="text-sm text-muted-foreground">{rangeLabel}</div>
           </div>
         </div>
@@ -315,10 +256,6 @@ export default function AdminFinance() {
           <Button onClick={printPDF} disabled={loading || !rows.length} variant="secondary">
             <Printer className="h-4 w-4 ml-2" />
             طباعة / PDF
-          </Button>
-          <Button onClick={rebuildAndSave} disabled={loading} variant="outline">
-            <RefreshCcw className="h-4 w-4 ml-2" />
-            إعادة حساب + حفظ
           </Button>
         </div>
       </div>
@@ -359,8 +296,7 @@ export default function AdminFinance() {
                   <SelectItem value="all">كل المراكز</SelectItem>
                   {centers.map((c) => (
                     <SelectItem key={c._id} value={c._id}>
-                      {c.name}
-                      {c.ip ? ` — ${c.ip}` : ""}
+                      {c.name} {c.ip ? `— ${c.ip}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -368,7 +304,7 @@ export default function AdminFinance() {
             </div>
 
             <div className="flex items-end">
-              <Button className="w-full" onClick={loadFinance} disabled={loading}>
+              <Button className="w-full" onClick={loadData} disabled={loading}>
                 {loading ? "جاري التحميل..." : "تحديث"}
               </Button>
             </div>
@@ -382,100 +318,42 @@ export default function AdminFinance() {
             <Badge>حصة الدولة: {formatCurrency(grand.stateShareTotal || 0)}</Badge>
             <Badge>حصة الاتحاد: {formatCurrency(grand.federationTotal || 0)}</Badge>
             <Badge>حصة الشركات: {formatCurrency(grand.companyShareTotal || 0)}</Badge>
-
-            {selectedCenter && (
-              <Badge variant="secondary">
-                المركز: {selectedCenter.name} {selectedCenter.ip ? `(${selectedCenter.ip})` : ""}
-              </Badge>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader><CardTitle>طابع الشهيد</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.martyrTotal || 0)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>المجهود الحربي</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.warTotal || 0)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>رسم الطابع</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.stampTotal || 0)}</CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>رسم الأعمار</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.agesTotal || 0)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>الإدارة المحلية</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.localTotal || 0)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>البدل المقترح</CardTitle></CardHeader>
-          <CardContent className="text-xl font-extrabold">{formatCurrency(grand.proposedTotal || 0)}</CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>التفصيل حسب المركز</CardTitle>
+          <CardTitle>التوزيع حسب شركة التأمين</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="p-3 text-right">المركز</th>
-                  <th className="p-3 text-right">المحافظة</th>
-                  <th className="p-3 text-right">IP</th>
+                  <th className="p-3 text-right">شركة التأمين</th>
                   <th className="p-3 text-right">عدد الدفعات</th>
                   <th className="p-3 text-right">الإجمالي</th>
-
-                  <th className="p-3 text-right">طابع الشهيد</th>
-                  <th className="p-3 text-right">المجهود الحربي</th>
-                  <th className="p-3 text-right">رسم الطابع</th>
-                  <th className="p-3 text-right">رسم الأعمار</th>
-                  <th className="p-3 text-right">الإدارة المحلية</th>
-                  <th className="p-3 text-right">البدل المقترح</th>
-
                   <th className="p-3 text-right">حصة الدولة</th>
                   <th className="p-3 text-right">حصة الاتحاد</th>
-                  <th className="p-3 text-right">حصة الشركات</th>
+                  <th className="p-3 text-right">حصة الشركة</th>
                 </tr>
               </thead>
-
               <tbody>
                 {rows.map((r) => (
-                  <tr key={String(r.centerId)} className="border-b hover:bg-muted/30">
-                    <td className="p-3">
-                      <div className="font-semibold">{r.centerName || r.centerCode || String(r.centerId)}</div>
-                      {r.centerCode && <div className="text-xs text-muted-foreground">كود: {r.centerCode}</div>}
-                    </td>
-                    <td className="p-3">{r.province || "—"}</td>
-                    <td className="p-3">{r.centerIp || "—"}</td>
+                  <tr key={String(r.insuranceCompanyId)} className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-semibold">{r.insuranceCompanyName}</td>
                     <td className="p-3">{formatNumber(r.paymentsCount || 0)}</td>
                     <td className="p-3 font-extrabold">{formatCurrency(r.totalAmount || 0)}</td>
-
-                    <td className="p-3">{formatCurrency(r.martyrTotal || 0)}</td>
-                    <td className="p-3">{formatCurrency(r.warTotal || 0)}</td>
-                    <td className="p-3">{formatCurrency(r.stampTotal || 0)}</td>
-                    <td className="p-3">{formatCurrency(r.agesTotal || 0)}</td>
-                    <td className="p-3">{formatCurrency(r.localTotal || 0)}</td>
-                    <td className="p-3">{formatCurrency(r.proposedTotal || 0)}</td>
-
-                    <td className="p-3 font-bold">{formatCurrency(r.stateShareTotal || 0)}</td>
-                    <td className="p-3 font-bold">{formatCurrency(r.federationTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.stateShareTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.federationTotal || 0)}</td>
                     <td className="p-3 font-bold">{formatCurrency(r.companyShareTotal || 0)}</td>
                   </tr>
                 ))}
 
                 {!rows.length && (
                   <tr>
-                    <td className="p-4 text-center text-muted-foreground" colSpan={14}>
+                    <td className="p-4 text-center text-muted-foreground" colSpan={6}>
                       لا يوجد بيانات ضمن هذه الفترة
                     </td>
                   </tr>
@@ -485,7 +363,7 @@ export default function AdminFinance() {
           </div>
 
           <div className="text-xs text-muted-foreground mt-3">
-            ملاحظة: التفصيل يعتمد على وجود <b>breakdown/quote</b> داخل payment. أي دفعات بدون breakdown ستظهر رسومها = 0.
+            ملاحظة: حصة الدولة = مجموع الرسوم (طابع شهيد + حرب + طابع + أعمار + محلية + بدل مقترح). حصة الشركة = الإجمالي - (حصة الدولة + حصة الاتحاد).
           </div>
         </CardContent>
       </Card>

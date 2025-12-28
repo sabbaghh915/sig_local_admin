@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RequireRole from "./components/auth/RequireRole";
-import { AdminLayout, AdminDashboard, AdminEmployees, AdminRecords, AdminPayments, AdminCenters, AdminFinance, AdminInsuranceCompanies } from "./pages/admin";
+import { AdminLayout, AdminDashboard, AdminEmployees, AdminRecords, AdminPayments, AdminCenters, AdminFinance, AdminInsuranceCompanies, AdminFinanceDistribution } from "./pages/admin";
 
 // صفحاتك الحالية (مثال)
 import Home from "./pages/admin/Home";
@@ -29,6 +29,7 @@ export default function App() {
           <Route path="payments" element={<AdminPayments />} />
           <Route path="finance" element={<AdminFinance />} />
           <Route path="insurance-companies" element={<AdminInsuranceCompanies />} />
+          <Route path="finance-distribution" element={<AdminFinanceDistribution />} />
 
         </Route>
       </Routes>
