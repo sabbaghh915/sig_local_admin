@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
+import PageHeader from "../../components/export/PageHeader"; // Adjust the path if necessary
 import { adminApi } from "../../services/adminApi";
 import { Edit, Plus, RefreshCcw, Trash2, MapPin, Network } from "lucide-react";
 
@@ -199,6 +200,8 @@ export default function AdminCenters() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">المراكز</h2>
+          <PageHeader title="إدارة المراكز" entity="centers" fileName="centers" />
+
           <p className="text-sm text-slate-500 mt-1">
             إدارة مراكز اقتطاع بوليصة التأمين (اسم المركز + IP + كود + عنوان)
           </p>

@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { adminApi } from "../../services/adminApi";
 import { Loader2, AlertCircle } from "lucide-react"; // اختياري للأيقونات
+import ExportButtons from "@/components/export/ExportButtons";
 
 const extractArray = (res: any): any[] => {
   if (Array.isArray(res)) return res;
@@ -21,6 +22,9 @@ export default function AdminRecords() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  
 
   useEffect(() => {
     setLoading(true);
@@ -72,6 +76,12 @@ export default function AdminRecords() {
           >
             مركبات أجنبية
           </Button>
+          <ExportButtons
+          entity="payments"
+          fileName="payments"
+          params={{ from, to, q }}
+          hideIfNoPermission={false} // للأدمن المساعد: ممكن تخليها true إذا بدك تخفي الأزرار بدون صلاحية
+        />
         </div>
         <Input
           placeholder="ابحث برقم اللوحة أو اسم المالك أو الهوية..."

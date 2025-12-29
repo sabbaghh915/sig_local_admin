@@ -9,6 +9,7 @@ import { Separator } from "../../components/ui/separator";
 import { Badge } from "../../components/ui/badge";
 import { adminApi } from "../../services/adminApi";
 import { Building2, RefreshCcw, Download, Printer, AlertCircle, BarChart3 } from "lucide-react";
+import PageHeader from "../../components/export/PageHeader";
 
 type Center = {
   _id: string;
@@ -303,6 +304,8 @@ export default function AdminFinance() {
           </div>
           <div>
             <div className="text-xl font-extrabold">المالية — تفصيل الرسوم حسب المراكز</div>
+            <PageHeader title="إدارة المالية" entity="finance" fileName="finance" />
+            
             <div className="text-sm text-muted-foreground">{rangeLabel}</div>
           </div>
         </div>

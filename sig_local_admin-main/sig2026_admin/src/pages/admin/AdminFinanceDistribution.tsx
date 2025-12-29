@@ -10,6 +10,7 @@ import { Badge } from "../../components/ui/badge";
 import { adminApi } from "../../services/adminApi";
 import { Building2, Download, Printer, AlertCircle, PieChart } from "lucide-react";
 
+
 type Center = {
   _id: string;
   name: string;
@@ -245,6 +246,7 @@ export default function AdminFinanceDistribution() {
           <div>
             <div className="text-xl font-extrabold">توزيع المبالغ على شركات التأمين</div>
             <div className="text-sm text-muted-foreground">{rangeLabel}</div>
+            
           </div>
         </div>
 

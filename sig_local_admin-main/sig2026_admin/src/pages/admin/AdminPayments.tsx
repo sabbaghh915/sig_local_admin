@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../components/ui/table";
 import { adminApi } from "../../services/adminApi";
 import { AlertCircle, Loader2, CreditCard } from "lucide-react";
+import ExportButtons from "@/components/export/ExportButtons";
 
 const extractArray = (res: any): any[] => {
   if (Array.isArray(res)) return res;
@@ -17,6 +18,9 @@ export default function AdminPayments() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -47,6 +51,12 @@ export default function AdminPayments() {
           </span>
           <div className="flex flex-col">
             <span className="text-lg font-extrabold">الدفعات</span>
+            <ExportButtons
+          entity="payments"
+          fileName="payments"
+          params={{ from, to, q }}
+          hideIfNoPermission={false} // للأدمن المساعد: ممكن تخليها true إذا بدك تخفي الأزرار بدون صلاحية
+        />
             <span className="text-sm font-normal text-slate-600">({items.length}) عملية</span>
           </div>
         </CardTitle>

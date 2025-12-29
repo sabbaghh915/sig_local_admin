@@ -6,6 +6,7 @@ import { Label } from "../../components/ui/label";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Separator } from "../../components/ui/separator";
 import { Badge } from "../../components/ui/badge";
+import PageHeader from "../../components/export/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -351,6 +352,7 @@ const openDetails = async (companyId: string) => {
           <div>
             <div className="text-xl font-extrabold">شركات التأمين</div>
             <div className="text-sm text-muted-foreground">إدارة الشركات + إحصائيات ضمن الفترة</div>
+            <PageHeader title="إدارة شركات التأمين" entity="insurance_companies" fileName="insurance_companies" />
           </div>
         </div>
 

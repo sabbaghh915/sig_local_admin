@@ -6,6 +6,7 @@ import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { adminApi } from "../../services/adminApi";
+import PageHeader from "../../components/export/PageHeader";
 
 type Center = {
   _id: string;
@@ -164,6 +165,7 @@ const centerIp = (u: any, centers: any[]) => {
       <Card className="shadow-sm">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle>الموظفون</CardTitle>
+          <PageHeader title="إدارة الموظفين" entity="employees" fileName="employees" />
 
           <div className="flex items-center gap-2">
             {/* ✅ زر يفتح النافذة فقط */}
