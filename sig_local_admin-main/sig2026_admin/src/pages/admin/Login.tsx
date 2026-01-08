@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { AlertCircle, Lock, User } from "lucide-react";
+import logo from "../../assets/logo.svg";
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL?.replace(/\/$/, "")) || "/api";
 
@@ -57,11 +58,12 @@ export default function Login() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600">
+    <div dir="rtl" className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-600 via-green-700 to-green-800">
       <Card className="w-full max-w-md overflow-hidden border-white/25 bg-white/90 backdrop-blur shadow-2xl">
-        <div className="h-2 bg-gradient-to-r from-emerald-500 via-cyan-500 to-indigo-600" />
+        <div className="h-2 bg-gradient-to-r from-green-600 via-green-700 to-green-800" />
 
-        <CardHeader>
+        <CardHeader className="flex flex-col items-center">
+          <img src={logo} alt="Syrian Insurance Federation" className="w-24 h-24 mb-4" />
           <CardTitle className="text-center text-2xl font-extrabold text-slate-900">
             تسجيل دخول الأدمن
           </CardTitle>
@@ -112,7 +114,7 @@ export default function Login() {
           <Button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 hover:opacity-95"
+            className="w-full bg-gradient-to-r from-green-600 via-green-700 to-green-800 hover:opacity-95"
           >
             {loading ? "جاري تسجيل الدخول..." : "دخول"}
           </Button>

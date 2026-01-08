@@ -6,7 +6,10 @@ const getToken = () => {
   const raw =
     localStorage.getItem("authToken") ||
     localStorage.getItem("token") ||
-    localStorage.getItem("accessToken");
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("authToken") ||
+    sessionStorage.getItem("token") ||
+    sessionStorage.getItem("accessToken");
 
   if (!raw) return null;
 
@@ -83,13 +86,23 @@ export const adminApi = {
   deleteUser: (id: string) => apiFetch(`/admin/users/${id}`, { method: "DELETE" }),
 
   // ✅ Centers (بدون axios + مع توكن)
-  getCenters: () => apiFetch("/admin/centers"),
-  createCenter: (payload: any) =>
-    apiFetch("/admin/centers", { method: "POST", body: JSON.stringify(payload) }),
-  updateCenter: (id: string, payload: any) =>
-    apiFetch(`/admin/centers/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  deleteCenter: (id: string) =>
-    apiFetch(`/admin/centers/${id}`, { method: "DELETE" }),
+getCenters: (params?: { page?: number; limit?: number; q?: string }) => {
+  const qs = new URLSearchParams();
+
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.q) qs.set("q", params.q);
+
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch(`/admin/centers${suffix}`);
+},
+createCenter: (payload: any) =>
+  apiFetch("/admin/centers", { method: "POST", body: JSON.stringify(payload) }),
+updateCenter: (id: string, payload: any) =>
+  apiFetch(`/admin/centers/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+deleteCenter: (id: string) =>
+  apiFetch(`/admin/centers/${id}`, { method: "DELETE" }),
+
 
   // Finance
 getFinanceByCenter: (from?: string, to?: string, centerId?: string) => {
@@ -149,6 +162,12 @@ createAssistantAdmin: (payload: any) =>
 updateAssistantAdmin: (id: string, payload: any) =>
   apiFetch(`/admin/assistant-admins/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
 
-
+getPricing: () => apiFetch("/admin/pricing"),
+  updatePricing: (payload: any) => apiFetch("/admin/pricing", { method: "PUT", body: JSON.stringify(payload) }),
+  resetPricing: () => apiFetch("/admin/pricing/reset", { method: "POST" }),
+  patchPricingItem: (payload: { scope: "internal" | "border"; key: string; value: number; meta?: { label?: string; group?: string; duration?: string };  }) =>
+    apiFetch("/admin/pricing/item", { method: "PATCH", body: JSON.stringify(payload) }),
+deletePricingItem: (scope: "internal" | "border", key: string) =>
+    apiFetch("/admin/pricing/item", { method: "DELETE", body: JSON.stringify({ scope, key }) }),
 
 };

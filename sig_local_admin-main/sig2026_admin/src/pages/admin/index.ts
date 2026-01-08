@@ -8,6 +8,7 @@ export { default as AdminFinance } from "./AdminFinance";
 export { default as AdminInsuranceCompanies } from "./AdminInsuranceCompanies";
 export { default as AdminFinanceDistribution } from "./AdminFinanceDistribution";
 export { default as AdminAssistantAdmins } from "./AdminAssistantAdmins";
+export { default as AdminPricing } from "./AdminPricing";
 
 
 

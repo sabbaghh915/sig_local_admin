@@ -49,16 +49,112 @@ type Vehicle = {
   vehicleType?: "syrian" | "foreign" | string;
 };
 
-type Payment = {
-  _id?: string;
-  amount?: number;
+/**
+ * ✅ Payment document (حسب DB)
+ * - يدعم أيضاً أسماء قديمة لو رجعها الباك (status/method/reference/total)
+ */
+type PricingInput = {
+  insuranceType?: "internal" | "border" | string;
+  vehicleCode?: string;
+  category?: string;
+  classification?: number;
+  months?: number;
+  electronicCard?: boolean;
+  premiumService?: boolean;
+  rescueService?: boolean;
+  vehicleType?: string;
+  period?: number;
+};
+
+type Breakdown = {
+  netPremium?: number;
+  stampFee?: number;
+  warEffort?: number;
+  martyrFund?: number;
+  localAdministration?: number;
+  reconstruction?: number;
+
+  agesFee?: number;
+  federationFee?: number;
+
+  electronicCardFee?: number;
+  premiumServiceFee?: number;
+  rescueServiceFee?: number;
+
+  subtotal?: number;
   total?: number;
-  status?: string;
-  method?: string;
+};
+
+type PaymentDoc = {
+  _id?: string;
+
+  vehicleModel?: string;
+  vehicleId?: string;
+
+  policyNumber?: string;
+  receiptNumber?: string;
+
+  amount?: number;
+
+  paymentMethod?: string;
+  paymentStatus?: string;
+
+  paidBy?: string;
+  payerPhone?: string;
+
+  issuedAt?: string;
+  policyStartAt?: string;
+  policyEndAt?: string;
+
+  pricingInput?: PricingInput;
+  breakdown?: Breakdown;
+
+  paymentDate?: string;
   createdAt?: string;
-  reference?: string;
-  ownerName?: string;
-  plateNumber?: string;
+};
+
+const extractArray = (res: any): any[] => {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.items)) return res.items;
+  if (Array.isArray(res?.payments)) return res.payments;
+  return [];
+};
+
+const oid = (v: any) => (typeof v === "string" ? v : v?.$oid ? String(v.$oid) : undefined);
+const dt = (v: any) =>
+  typeof v === "string" ? v : v?.$date ? new Date(v.$date).toISOString() : undefined;
+
+const normalizePayment = (raw: any): PaymentDoc => {
+  if (!raw || typeof raw !== "object") return {};
+
+  return {
+    _id: oid(raw._id) || raw._id || raw.id,
+
+    vehicleModel: raw.vehicleModel,
+    vehicleId: oid(raw.vehicleId) || raw.vehicleId,
+
+    policyNumber: raw.policyNumber,
+    receiptNumber: raw.receiptNumber ?? raw.reference,
+
+    amount: raw.amount ?? raw.total ?? raw.breakdown?.total,
+
+    paymentMethod: raw.paymentMethod ?? raw.method,
+    paymentStatus: raw.paymentStatus ?? raw.status,
+
+    paidBy: raw.paidBy,
+    payerPhone: raw.payerPhone,
+
+    issuedAt: dt(raw.issuedAt) ?? raw.issuedAt,
+    policyStartAt: dt(raw.policyStartAt) ?? raw.policyStartAt,
+    policyEndAt: dt(raw.policyEndAt) ?? raw.policyEndAt,
+
+    pricingInput: raw.pricingInput,
+    breakdown: raw.breakdown,
+
+    paymentDate: dt(raw.paymentDate) ?? raw.paymentDate,
+    createdAt: dt(raw.createdAt) ?? raw.createdAt,
+  };
 };
 
 function formatDate(value?: string) {
@@ -129,7 +225,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [syVehicles, setSyVehicles] = useState<Vehicle[]>([]);
   const [frVehicles, setFrVehicles] = useState<Vehicle[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [payments, setPayments] = useState<PaymentDoc[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string>("");
 
   const counts = useMemo(() => {
@@ -158,7 +254,15 @@ export default function AdminDashboard() {
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setSyVehicles(Array.isArray(syRes) ? syRes : []);
       setFrVehicles(Array.isArray(frRes) ? frRes : []);
-      setPayments(Array.isArray(payRes) ? payRes : []);
+
+      const payList = extractArray(payRes).map(normalizePayment);
+      payList.sort((a, b) => {
+        const ta = new Date(a.createdAt || a.paymentDate || 0).getTime();
+        const tb = new Date(b.createdAt || b.paymentDate || 0).getTime();
+        return tb - ta;
+      });
+      setPayments(payList);
+
       setLastUpdatedAt(new Date().toISOString());
     } catch (err) {
       console.error(err);
@@ -216,9 +320,7 @@ export default function AdminDashboard() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold text-white truncate">لوحة تحكم الإدارة</h1>
-                <p className="text-sm text-white/90 truncate">
-                  ملخص سريع وإدارة بيانات النظام
-                </p>
+                <p className="text-sm text-white/90 truncate">ملخص سريع وإدارة بيانات النظام</p>
               </div>
             </div>
 
@@ -226,7 +328,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 onClick={() => loadData(true)}
-                className="gap-2 border-white/30 text-white hover:bg-white/10"
+                className="gap-2 border-white/30 bg-white/90 text-black hover:bg-white"
                 disabled={refreshing}
               >
                 <RefreshCcw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -236,7 +338,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="gap-2 border-white/30 text-white hover:bg-white/10"
+                className="gap-2 border-white/30 bg-white/90 text-black hover:bg-white"
               >
                 <Home className="w-4 h-4" />
                 الرئيسية
@@ -250,7 +352,7 @@ export default function AdminDashboard() {
                   localStorage.removeItem("token");
                   navigate("/login");
                 }}
-                className="border-white/30 text-white hover:bg-white/10"
+                className="border-white/30 bg-white/90 text-black hover:bg-white"
               >
                 تسجيل الخروج
               </Button>
@@ -268,9 +370,7 @@ export default function AdminDashboard() {
               <TrendingUp className="w-6 h-6" />
               نظرة عامة
             </h2>
-            <p className="text-gray-600 text-sm mt-1">
-              آخر تحديث: {lastUpdatedAt ? formatDate(lastUpdatedAt) : "—"}
-            </p>
+            <p className="text-gray-600 text-sm mt-1">آخر تحديث: {lastUpdatedAt ? formatDate(lastUpdatedAt) : "—"}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -303,8 +403,8 @@ export default function AdminDashboard() {
             title="مركبات أجنبية"
             value={loading ? "…" : counts.fr}
             hint="السجلات الأجنبية"
-            icon={<FileText className="w-5 h-5 text-purple-600" />}
-            accent="from-purple-600 to-purple-400"
+            icon={<FileText className="w-5 h-5 text-green-600" />}
+            accent="from-green-600 to-green-400"
           />
           <StatCard
             title="الدفعات"
@@ -322,9 +422,7 @@ export default function AdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between">
               <span className="text-lg">الجداول</span>
-              <span className="text-sm text-gray-500">
-                {loading ? "تحميل..." : "أحدث السجلات"}
-              </span>
+              <span className="text-sm text-gray-500">{loading ? "تحميل..." : "أحدث السجلات"}</span>
             </CardTitle>
           </CardHeader>
 
@@ -351,16 +449,17 @@ export default function AdminDashboard() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-right">التاريخ</TableHead>
+                        <TableHead className="text-right">الإيصال</TableHead>
+                        <TableHead className="text-right">الوثيقة</TableHead>
                         <TableHead className="text-right">المبلغ</TableHead>
                         <TableHead className="text-right">الحالة</TableHead>
-                        <TableHead className="text-right">مرجع</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i}>
-                            <TableCell colSpan={4}>
+                            <TableCell colSpan={5}>
                               <div className="h-8 bg-gray-100 rounded animate-pulse" />
                             </TableCell>
                           </TableRow>
@@ -368,19 +467,16 @@ export default function AdminDashboard() {
                       ) : latestPayments.length ? (
                         latestPayments.map((p) => (
                           <TableRow key={p._id || Math.random()}>
-                            <TableCell className="text-right">{formatDate(p.createdAt)}</TableCell>
-                            <TableCell className="text-right">
-                              {formatMoney((p.amount ?? p.total) as number)}
-                            </TableCell>
-                            <TableCell className="text-right">{getStatusBadge(p.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <span className="text-gray-700">{p.reference || p._id || "—"}</span>
-                            </TableCell>
+                            <TableCell className="text-right">{formatDate(p.paymentDate || p.createdAt)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs">{p.receiptNumber || "—"}</TableCell>
+                            <TableCell className="text-right font-mono text-xs">{p.policyNumber || "—"}</TableCell>
+                            <TableCell className="text-right">{formatMoney(p.amount ?? p.breakdown?.total)}</TableCell>
+                            <TableCell className="text-right">{getStatusBadge(p.paymentStatus)}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                          <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                             لا توجد بيانات لعرضها
                           </TableCell>
                         </TableRow>
@@ -423,9 +519,7 @@ export default function AdminDashboard() {
                           <TableRow key={u._id || Math.random()}>
                             <TableCell className="text-right">{u.fullName || "—"}</TableCell>
                             <TableCell className="text-right">{u.username || "—"}</TableCell>
-                            <TableCell className="text-right">
-                              {u.role ? <Badge variant="secondary">{u.role}</Badge> : "—"}
-                            </TableCell>
+                            <TableCell className="text-right">{u.role ? <Badge variant="secondary">{u.role}</Badge> : "—"}</TableCell>
                             <TableCell className="text-right">{formatDate(u.createdAt)}</TableCell>
                           </TableRow>
                         ))
@@ -475,8 +569,7 @@ export default function AdminDashboard() {
                             <TableCell className="text-right">{v.ownerName || "—"}</TableCell>
                             <TableCell className="text-right">{v.plateNumber || "—"}</TableCell>
                             <TableCell className="text-right">
-                              {(v.brand || "—") + " " + (v.model || "")}{" "}
-                              {v.year ? `(${v.year})` : ""}
+                              {(v.brand || "—") + " " + (v.model || "")} {v.year ? `(${v.year})` : ""}
                             </TableCell>
                             <TableCell className="text-right">{formatDate(v.createdAt)}</TableCell>
                           </TableRow>
@@ -527,8 +620,7 @@ export default function AdminDashboard() {
                             <TableCell className="text-right">{v.ownerName || "—"}</TableCell>
                             <TableCell className="text-right">{v.plateNumber || "—"}</TableCell>
                             <TableCell className="text-right">
-                              {(v.brand || "—") + " " + (v.model || "")}{" "}
-                              {v.year ? `(${v.year})` : ""}
+                              {(v.brand || "—") + " " + (v.model || "")} {v.year ? `(${v.year})` : ""}
                             </TableCell>
                             <TableCell className="text-right">{formatDate(v.createdAt)}</TableCell>
                           </TableRow>
@@ -548,7 +640,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Footer note */}
         <div className="text-sm text-gray-500 mt-6">
           Tip: إذا بدك “Top Bar” موحّد لكل صفحات الأدمن، بعملك Component مستقل (Layout) وتستخدمه بكل الصفحات.
         </div>

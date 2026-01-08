@@ -11,6 +11,7 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import logo from "../../assets/logo.svg";
 
 interface PageInfo {
   path: string;
@@ -32,6 +33,7 @@ export default function AdminLayout() {
     { path: "/admin/insurance-companies", name: "شركات التأمين", icon: <Building2 className="w-4 h-4" /> },
     { path: "/admin/finance-distribution", name: "توزيع المبالغ", icon: <CreditCard className="w-4 h-4" /> },
     { path: "/admin/assistant-admins", name: "المسؤولون المساعدون", icon: <CreditCard className="w-4 h-4" /> },
+    { path: "/admin/pricing", name: "التسعير", icon: <CreditCard className="w-4 h-4" /> },
   ];
 
   const current = pages.find((p) => p.path === location.pathname);
@@ -48,7 +50,7 @@ export default function AdminLayout() {
       "flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition w-full",
       "hover:bg-white/60",
       isActive
-        ? "bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white shadow"
+        ? "bg-gradient-to-r from-green-600 via-green-700 to-green-800 text-white shadow"
         : "text-slate-700"
     );
 
@@ -56,14 +58,12 @@ export default function AdminLayout() {
     <div className="min-h-screen" dir="rtl">
       {/* Topbar (Gradient) */}
       <header className="sticky top-0 z-50">
-        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white shadow-lg">
+        <div className="bg-gradient-to-r from-green-600 via-green-700 to-green-800 text-white shadow-lg">
           {/* ✅ FULL WIDTH */}
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="h-16 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center">
-                  <Shield className="w-6 h-6" />
-                </div>
+                <img src={logo} alt="Syrian Insurance Federation" className="w-12 h-12 rounded-lg bg-white/10 p-1" />
                 <div className="min-w-0">
                   <div className="font-bold text-lg leading-5 truncate">لوحة الإدارة</div>
                   <div className="text-xs text-white/85 truncate">
@@ -77,7 +77,7 @@ export default function AdminLayout() {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/")}
-                  className="border-white/30 text-white hover:bg-white/10 gap-2"
+                  className="border-white/30 bg-white/90 text-black hover:bg-white gap-2"
                 >
                   <Home className="w-4 h-4" />
                   الرئيسية
@@ -87,7 +87,7 @@ export default function AdminLayout() {
                   variant="outline"
                   size="sm"
                   onClick={logout}
-                  className="border-white/30 text-white hover:bg-white/10 gap-2"
+                  className="border-white/30 bg-white/90 text-black hover:bg-white gap-2"
                 >
                   <LogOut className="w-4 h-4" />
                   خروج
@@ -110,7 +110,7 @@ export default function AdminLayout() {
                   cn(
                     "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition flex items-center gap-2",
                     isActive
-                      ? "bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white border-transparent shadow"
+                      ? "bg-gradient-to-r from-green-600 to-green-800 text-white border-transparent shadow"
                       : "bg-white/70 hover:bg-white border-slate-200 text-slate-700"
                   )
                 }

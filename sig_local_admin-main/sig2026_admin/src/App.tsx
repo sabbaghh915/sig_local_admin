@@ -11,6 +11,7 @@ import {
   AdminInsuranceCompanies,
   AdminFinanceDistribution,
   AdminAssistantAdmins,
+  AdminPricing,
 } from "./pages/admin";
 
 import Home from "./pages/admin/Home";
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="insurance-companies" element={<AdminInsuranceCompanies />} />
           <Route path="finance-distribution" element={<AdminFinanceDistribution />} />
           <Route path="assistant-admins" element={<AdminAssistantAdmins />} />
+          <Route path="pricing" element={<AdminPricing />} />
         </Route>
 
         {/* ✅ Assistant Admin (assistant_admin + admin) بدون permissions */}

@@ -44,7 +44,7 @@ export default function AssistantDashboard() {
 
           <div className="rounded-2xl border bg-white p-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
+              <Sparkles className="h-4 w-4 text-green-600" />
               <div className="text-sm font-bold text-slate-900">ملاحظة</div>
             </div>
 

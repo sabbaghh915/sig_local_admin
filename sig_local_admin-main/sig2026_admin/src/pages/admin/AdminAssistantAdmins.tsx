@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { adminApi } from "../../services/adminApi";
 import { Shield, Plus, RefreshCcw, AlertCircle, UserCog } from "lucide-react";
+import { PaginationBar } from "../../components/ui/pagination";
 
 type AssistantAdmin = {
   _id: string;
@@ -43,6 +44,10 @@ export default function AdminAssistantAdmins() {
   const [password, setPassword] = useState("");
   const [perms, setPerms] = useState<string[]>(["view_payments", "view_finance", "export_reports"]);
   const [saving, setSaving] = useState(false);
+
+  // Pagination (client-side)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const load = async () => {
     setError("");
@@ -101,6 +106,15 @@ export default function AdminAssistantAdmins() {
   };
 
   const totalActive = useMemo(() => items.filter((x) => x.isActive).length, [items]);
+
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    if (start >= items.length && page > 1) {
+      return items.slice(0, pageSize);
+    }
+    return items.slice(start, end);
+  }, [items, page, pageSize]);
 
   return (
     <div dir="rtl" className="p-6 space-y-4">
@@ -203,7 +217,7 @@ export default function AdminAssistantAdmins() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((u) => (
+                {pagedItems.map((u) => (
                   <TableRow key={u._id}>
                     <TableCell>
                       <div className="font-semibold">{u.username}</div>
@@ -260,6 +274,14 @@ export default function AdminAssistantAdmins() {
               </TableBody>
             </Table>
           </div>
+          <PaginationBar
+            page={page}
+            pageSize={pageSize}
+            total={items.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 50]}
+          />
         </CardContent>
       </Card>
     </div>

@@ -6,6 +6,7 @@ import { Separator } from "../../components/ui/separator";
 import { Badge } from "../../components/ui/badge";
 import { LayoutDashboard, LogOut, Shield, User, CreditCard, Wallet, FileText } from "lucide-react";
 import { cn } from "../../lib/utils";
+import logo from "../../assets/logo.svg";
 
 type NavItem = {
   to: string;
@@ -64,14 +65,12 @@ export default function AssistantLayout() {
   const visibleNav = navItems.filter(canSee);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-white via-green-50 to-green-100">
       {/* Top Bar */}
       <div className="sticky top-0 z-20 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 text-white shadow">
-              <Shield className="h-5 w-5" />
-            </div>
+            <img src={logo} alt="Syrian Insurance Federation" className="w-10 h-10 rounded-lg" />
             <div className="leading-tight">
               <div className="text-sm font-extrabold text-slate-900">لوحة الأدمن المساعد</div>
               <div className="text-xs text-slate-500">Assistant Admin</div>
@@ -121,12 +120,12 @@ export default function AssistantLayout() {
                     className={cn(
                       "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition",
                       active
-                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                        ? "border-green-200 bg-green-50 text-green-700"
                         : "border-transparent bg-white hover:bg-slate-50"
                     )}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className={cn("h-4 w-4", active ? "text-indigo-700" : "text-slate-500")} />
+                      <Icon className={cn("h-4 w-4", active ? "text-green-700" : "text-slate-500")} />
                       <span className="font-semibold">{item.label}</span>
                     </div>
 

@@ -10,7 +10,6 @@ import { Badge } from "../../components/ui/badge";
 import { adminApi } from "../../services/adminApi";
 import { Building2, Download, Printer, AlertCircle, PieChart } from "lucide-react";
 
-
 type Center = {
   _id: string;
   name: string;
@@ -30,12 +29,16 @@ type DistributionRow = {
   federationTotal: number;
   companyShareTotal: number;
 
+  // تفصيل الرسوم (يُفترض أن الباك يرجّعها)
   martyrTotal: number;
   warTotal: number;
   stampTotal: number;
   agesTotal: number;
   localTotal: number;
   proposedTotal: number;
+
+  // لو عندك "إعادة إعمار" بالباك، ممكن تضيفها هون لاحقاً
+  // reconstructionTotal?: number;
 };
 
 type DistributionResponse = {
@@ -49,6 +52,13 @@ type DistributionResponse = {
     stateShareTotal?: number;
     federationTotal?: number;
     companyShareTotal?: number;
+
+    martyrTotal?: number;
+    warTotal?: number;
+    stampTotal?: number;
+    agesTotal?: number;
+    localTotal?: number;
+    proposedTotal?: number;
   };
 };
 
@@ -157,11 +167,12 @@ export default function AdminFinanceDistribution() {
   };
 
   const printPDF = () => {
-    const title = "توزيع المبالغ على شركات التأمين + حصة الدولة + حصة الاتحاد";
+    const title = "توزيع المبالغ على شركات التأمين + تفصيل الرسوم";
     const centerFilter = selectedCenter ? `المركز: ${selectedCenter.name}` : "كل المراكز";
 
     const rowHtml = rows
-      .map((r) => `
+      .map(
+        (r) => `
         <tr>
           <td>${r.insuranceCompanyName}</td>
           <td>${formatNumber(r.paymentsCount || 0)}</td>
@@ -169,8 +180,15 @@ export default function AdminFinanceDistribution() {
           <td>${formatCurrency(r.stateShareTotal || 0)}</td>
           <td>${formatCurrency(r.federationTotal || 0)}</td>
           <td><b>${formatCurrency(r.companyShareTotal || 0)}</b></td>
+          <td>${formatCurrency(r.martyrTotal || 0)}</td>
+          <td>${formatCurrency(r.warTotal || 0)}</td>
+          <td>${formatCurrency(r.stampTotal || 0)}</td>
+          <td>${formatCurrency(r.agesTotal || 0)}</td>
+          <td>${formatCurrency(r.localTotal || 0)}</td>
+          <td>${formatCurrency(r.proposedTotal || 0)}</td>
         </tr>
-      `)
+      `
+      )
       .join("");
 
     const html = `
@@ -184,8 +202,8 @@ export default function AdminFinanceDistribution() {
           .meta { margin: 0 0 12px; color: #444; font-size: 12px; }
           .cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 16px; }
           .card { border: 1px solid #ddd; border-radius: 10px; padding: 10px 12px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: top; }
           th { background: #f5f5f5; }
           @media print { .noprint { display: none; } }
         </style>
@@ -213,17 +231,23 @@ export default function AdminFinanceDistribution() {
               <th>حصة الدولة</th>
               <th>حصة الاتحاد</th>
               <th>حصة الشركة</th>
+              <th>طابع الشهيد</th>
+              <th>المجهود الحربي</th>
+              <th>رسم الطابع</th>
+              <th>رسم الأعمار</th>
+              <th>الإدارة المحلية</th>
+              <th>البدل المقترح</th>
             </tr>
           </thead>
           <tbody>
-            ${rowHtml || `<tr><td colspan="6">لا يوجد بيانات</td></tr>`}
+            ${rowHtml || `<tr><td colspan="12">لا يوجد بيانات</td></tr>`}
           </tbody>
         </table>
       </body>
       </html>
     `;
 
-    const w = window.open("", "_blank", "width=1100,height=700");
+    const w = window.open("", "_blank", "width=1200,height=750");
     if (!w) return alert("المتصفح منع فتح نافذة جديدة للطباعة");
     w.document.open();
     w.document.write(html);
@@ -246,7 +270,6 @@ export default function AdminFinanceDistribution() {
           <div>
             <div className="text-xl font-extrabold">توزيع المبالغ على شركات التأمين</div>
             <div className="text-sm text-muted-foreground">{rangeLabel}</div>
-            
           </div>
         </div>
 
@@ -321,6 +344,16 @@ export default function AdminFinanceDistribution() {
             <Badge>حصة الاتحاد: {formatCurrency(grand.federationTotal || 0)}</Badge>
             <Badge>حصة الشركات: {formatCurrency(grand.companyShareTotal || 0)}</Badge>
           </div>
+
+          {/* تفصيل الرسوم */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <Badge variant="outline">طابع الشهيد: {formatCurrency(grand.martyrTotal || 0)}</Badge>
+            <Badge variant="outline">المجهود الحربي: {formatCurrency(grand.warTotal || 0)}</Badge>
+            <Badge variant="outline">رسم الطابع: {formatCurrency(grand.stampTotal || 0)}</Badge>
+            <Badge variant="outline">رسم الأعمار: {formatCurrency(grand.agesTotal || 0)}</Badge>
+            <Badge variant="outline">الإدارة المحلية: {formatCurrency(grand.localTotal || 0)}</Badge>
+            <Badge variant="outline">البدل المقترح: {formatCurrency(grand.proposedTotal || 0)}</Badge>
+          </div>
         </CardContent>
       </Card>
 
@@ -339,6 +372,14 @@ export default function AdminFinanceDistribution() {
                   <th className="p-3 text-right">حصة الدولة</th>
                   <th className="p-3 text-right">حصة الاتحاد</th>
                   <th className="p-3 text-right">حصة الشركة</th>
+
+                  {/* تفصيل الرسوم */}
+                  <th className="p-3 text-right">طابع الشهيد</th>
+                  <th className="p-3 text-right">الحرب</th>
+                  <th className="p-3 text-right">الطابع</th>
+                  <th className="p-3 text-right">الأعمار</th>
+                  <th className="p-3 text-right">محلية</th>
+                  <th className="p-3 text-right">بدل مقترح</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,12 +391,19 @@ export default function AdminFinanceDistribution() {
                     <td className="p-3">{formatCurrency(r.stateShareTotal || 0)}</td>
                     <td className="p-3">{formatCurrency(r.federationTotal || 0)}</td>
                     <td className="p-3 font-bold">{formatCurrency(r.companyShareTotal || 0)}</td>
+
+                    <td className="p-3">{formatCurrency(r.martyrTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.warTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.stampTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.agesTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.localTotal || 0)}</td>
+                    <td className="p-3">{formatCurrency(r.proposedTotal || 0)}</td>
                   </tr>
                 ))}
 
                 {!rows.length && (
                   <tr>
-                    <td className="p-4 text-center text-muted-foreground" colSpan={6}>
+                    <td className="p-4 text-center text-muted-foreground" colSpan={12}>
                       لا يوجد بيانات ضمن هذه الفترة
                     </td>
                   </tr>
@@ -365,7 +413,7 @@ export default function AdminFinanceDistribution() {
           </div>
 
           <div className="text-xs text-muted-foreground mt-3">
-            ملاحظة: حصة الدولة = مجموع الرسوم (طابع شهيد + حرب + طابع + أعمار + محلية + بدل مقترح). حصة الشركة = الإجمالي - (حصة الدولة + حصة الاتحاد).
+            ملاحظة: "حصة الدولة" هي مجموع الرسوم. "حصة الشركة" = الإجمالي - (حصة الدولة + حصة الاتحاد).
           </div>
         </CardContent>
       </Card>

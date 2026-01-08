@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
-import PageHeader from "../../components/export/PageHeader"; // Adjust the path if necessary
+import PageHeader from "../../components/export/PageHeader";
 import { adminApi } from "../../services/adminApi";
 import { Edit, Plus, RefreshCcw, Trash2, MapPin, Network } from "lucide-react";
+import { PaginationBar } from "../../components/ui/pagination";
 
 type Center = {
   _id?: string;
@@ -15,7 +16,7 @@ type Center = {
   code?: string;
   address?: string;
   city?: string;
-  employeesCount?: number; // اختياري من الباك
+  employeesCount?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -26,6 +27,15 @@ type CenterForm = {
   code: string;
   address: string;
   city: string;
+};
+
+type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
 };
 
 const emptyForm: CenterForm = {
@@ -51,54 +61,156 @@ export default function AdminCenters() {
 
   const [query, setQuery] = useState("");
 
-  // Modal state
+  // ✅ Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [meta, setMeta] = useState<PaginationMeta>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1,
+    hasPrev: false,
+    hasNext: false,
+  });
+
+  // ✅ Modal state
   const [openModal, setOpenModal] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [form, setForm] = useState<CenterForm>(emptyForm);
   const [formError, setFormError] = useState<string>("");
   const [saving, setSaving] = useState(false);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return centers;
-    return centers.filter((c) => {
-      const name = (c.name || "").toLowerCase();
-      const ip = (c.ip || "").toLowerCase();
-      const code = (c.code || "").toLowerCase();
-      const addr = (c.address || "").toLowerCase();
-      const city = (c.city || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        ip.includes(q) ||
-        code.includes(q) ||
-        addr.includes(q) ||
-        city.includes(q)
-      );
-    });
-  }, [centers, query]);
-
-  const loadCenters = async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      else setRefreshing(true);
-
-      setError("");
-      const res = await adminApi.getCenters();
-      setCenters(Array.isArray(res) ? res : []);
-    } catch (e) {
-      console.error(e);
-      setError("فشل في تحميل المراكز");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   useEffect(() => {
-    loadCenters(false);
+    const t = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+
+  const loadCenters = async (silent = false) => {
+  try {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
+
+    setError("");
+
+    // إذا كان limit = -1 يعني "الكل"، نجلب كل الصفحات
+    if (limit === -1) {
+      const allCenters: Center[] = [];
+      let currentPage = 1;
+      const pageLimit = 100; // جلب 100 مركز في كل صفحة
+      let hasMore = true;
+
+      while (hasMore) {
+        try {
+          const res: any = await adminApi.getCenters({
+            page: currentPage,
+            limit: pageLimit,
+            q: debouncedQuery || undefined,
+          });
+
+          const data = res?.data ?? res;
+          const items: Center[] = Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data)
+            ? data
+            : [];
+
+          allCenters.push(...items);
+
+          const meta = data?.meta;
+          if (meta) {
+            hasMore = currentPage < meta.pages;
+            currentPage++;
+          } else {
+            hasMore = items.length === pageLimit;
+            currentPage++;
+          }
+        } catch (e) {
+          console.error("خطأ في جلب المراكز:", e);
+          hasMore = false;
+        }
+      }
+
+      setCenters(allCenters);
+      setMeta({
+        page: 1,
+        limit: -1,
+        total: allCenters.length,
+        pages: 1,
+        hasPrev: false,
+        hasNext: false,
+      });
+    } else {
+      // الحالة العادية مع pagination
+      const res: any = await adminApi.getCenters({
+        page,
+        limit,
+        q: debouncedQuery || undefined,
+      });
+
+      // ✅ يدعم: apiFetch يرجّع JSON مباشرة أو axios-like { data: ... }
+      const data = res?.data ?? res;
+
+      const items: Center[] = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data)
+        ? data
+        : [];
+
+      const incomingMeta: PaginationMeta | null =
+        data?.meta && typeof data.meta.pages === "number" ? data.meta : null;
+
+      setCenters(items);
+
+      if (incomingMeta) {
+        setMeta(incomingMeta);
+
+        // ✅ مزامنة الصفحة إذا السيرفر رجّع page مختلف (مثلاً بعد حذف آخر عنصر)
+        if (incomingMeta.page !== page) setPage(incomingMeta.page);
+      } else {
+        // fallback فقط إذا فعلاً ما في meta (يعني API قديم)
+        setMeta({
+          page: 1,
+          limit,
+          total: items.length,
+          pages: 1,
+          hasPrev: false,
+          hasNext: false,
+        });
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    setError("فشل في تحميل المراكز");
+    setCenters([]);
+    setMeta({
+      page: 1,
+      limit: limit === -1 ? -1 : limit,
+      total: 0,
+      pages: 1,
+      hasPrev: false,
+      hasNext: false,
+    });
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+
+
+
+  // ✅ debounce للبحث + تحميل عند تغيّر page/limit/query
+  useEffect(() => {
+    const t = setTimeout(() => {
+      loadCenters(false);
+    }, 250);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page, limit, query]);
 
   const openCreate = () => {
     setMode("create");
@@ -159,15 +271,22 @@ export default function AdminCenters() {
 
       if (mode === "create") {
         await adminApi.createCenter(payload);
+
+        // ✅ الجديد يظهر بالصفحة الأولى (createdAt:-1)
+        if (page !== 1) {
+          setPage(1); // سيجلب تلقائياً عبر useEffect
+        } else {
+          await loadCenters(true);
+        }
       } else {
         if (!activeId) {
           setFormError("لا يمكن تعديل مركز بدون id");
           return;
         }
         await adminApi.updateCenter(activeId, payload);
+        await loadCenters(true);
       }
 
-      await loadCenters(true);
       closeModal();
     } catch (e: any) {
       console.error(e);
@@ -185,7 +304,13 @@ export default function AdminCenters() {
     try {
       setRefreshing(true);
       await adminApi.deleteCenter(id);
-      await loadCenters(true);
+
+      // ✅ إذا حذفت آخر عنصر بصفحة غير الأولى -> ارجع صفحة
+      if (centers.length === 1 && page > 1) {
+        setPage(page - 1); // useEffect سيجلب
+      } else {
+        await loadCenters(true);
+      }
     } catch (e: any) {
       console.error(e);
       alert(e?.response?.data?.message || "فشل حذف المركز");
@@ -201,7 +326,6 @@ export default function AdminCenters() {
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">المراكز</h2>
           <PageHeader title="إدارة المراكز" entity="centers" fileName="centers" />
-
           <p className="text-sm text-slate-500 mt-1">
             إدارة مراكز اقتطاع بوليصة التأمين (اسم المركز + IP + كود + عنوان)
           </p>
@@ -235,21 +359,26 @@ export default function AdminCenters() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <span>قائمة المراكز</span>
-            <Badge variant="secondary">{filtered.length} مركز</Badge>
+            <Badge variant="secondary">{meta.total} مركز</Badge>
           </CardTitle>
         </CardHeader>
 
         <CardContent>
-          {/* Search */}
+          {/* Search + limit */}
           <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
             <div className="relative w-full md:max-w-md">
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="بحث: اسم / IP / كود / عنوان..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
+
+            {/* page size control is handled by PaginationBar below */}
           </div>
 
           <Separator className="my-3" />
@@ -289,33 +418,38 @@ export default function AdminCenters() {
                       </td>
                     </tr>
                   ))
-                ) : filtered.length === 0 ? (
+                ) : centers.length === 0 ? (
                   <tr>
                     <td className="p-6 text-center text-slate-500" colSpan={6}>
                       لا توجد مراكز
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c) => (
+                  centers.map((c) => (
                     <tr key={c._id} className="border-b hover:bg-slate-50/70">
+                      {/* name */}
                       <td className="p-3">
                         <div className="font-semibold text-slate-900">{c.name || "—"}</div>
                       </td>
 
+                      {/* ip */}
                       <td className="p-3">
                         {c.ip ? (
                           <span className="inline-flex items-center gap-2">
-                            <Network className="w-4 h-4 text-purple-600" />
-                            <span className="font-mono">{c.ip}</span>
+                            <Network className="w-4 h-4 text-green-600" />
+                            <span className="font-mono" dir="ltr">
+                              {c.ip}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
 
+                      {/* code */}
                       <td className="p-3">
                         {c.code ? (
-                          <Badge variant="secondary" className="font-mono">
+                          <Badge variant="secondary" className="font-mono" dir="ltr">
                             {c.code}
                           </Badge>
                         ) : (
@@ -323,6 +457,7 @@ export default function AdminCenters() {
                         )}
                       </td>
 
+                      {/* address */}
                       <td className="p-3">
                         {c.address || c.city ? (
                           <span className="inline-flex items-center gap-2 text-slate-700">
@@ -334,10 +469,12 @@ export default function AdminCenters() {
                         )}
                       </td>
 
+                      {/* employeesCount */}
                       <td className="p-3">
                         <Badge variant="secondary">{c.employeesCount ?? 0}</Badge>
                       </td>
 
+                      {/* actions */}
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <Button
@@ -367,22 +504,31 @@ export default function AdminCenters() {
               </tbody>
             </table>
           </div>
+
+          <PaginationBar
+            page={page}
+            pageSize={limit}
+            total={meta.total}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setLimit(size);
+              setPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, 100, 200, "all"]}
+          />
         </CardContent>
       </Card>
 
-      {/* ✅ Modal (يظهر فقط إذا openModal = true) */}
+      {/* ✅ Modal */}
       {openModal && (
         <div className="fixed inset-0 z-[9999]">
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={closeModal}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
           {/* Modal box */}
           <div className="absolute inset-0 flex items-start justify-center p-4 sm:p-6">
             <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden mt-20">
-              <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white">
+              <div className="px-6 py-4 bg-gradient-to-r from-green-600 via-green-700 to-green-800 text-white">
                 <div className="text-lg font-bold">
                   {mode === "create" ? "إضافة مركز" : "تعديل مركز"}
                 </div>
@@ -406,7 +552,7 @@ export default function AdminCenters() {
                   <input
                     value={form.name}
                     onChange={(e) => onChange("name", e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="مثال: مركز باب توما"
                   />
                 </div>
@@ -418,7 +564,7 @@ export default function AdminCenters() {
                     <input
                       value={form.code}
                       onChange={(e) => onChange("code", e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="مثال: 41102"
                       dir="ltr"
                     />
@@ -430,7 +576,7 @@ export default function AdminCenters() {
                     <input
                       value={form.ip}
                       onChange={(e) => onChange("ip", e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 font-mono"
                       placeholder="مثال: 172.19.50.32"
                       dir="ltr"
                     />
@@ -446,7 +592,7 @@ export default function AdminCenters() {
                   <input
                     value={form.city}
                     onChange={(e) => onChange("city", e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="مثال: دمشق"
                   />
                 </div>
@@ -457,7 +603,7 @@ export default function AdminCenters() {
                   <input
                     value={form.address}
                     onChange={(e) => onChange("address", e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="اختياري"
                   />
                 </div>
@@ -482,8 +628,6 @@ export default function AdminCenters() {
           </div>
         </div>
       )}
-
-      {/* ملاحظة: إذا النافذة تظهر دائمًا، معناها openModal عندك = true بشكل افتراضي أو Render بدون شرط */}
     </div>
   );
 }
